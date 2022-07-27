@@ -1,7 +1,7 @@
 import random
 from collections import Counter
 import pygame
-from .cell import LivingCell
+import time
 
 
 class GameManager:
@@ -19,13 +19,13 @@ class GameManager:
         self.screen_height = screen_height
         self.living_cells = self.generate_first_generation()
 
-    def generate_first_generation(self) -> set[LivingCell]:
+    def generate_first_generation(self) -> set[tuple[int, int]]:
         return {
-            LivingCell((random.randrange(200), random.randrange(200)))
+            (random.randrange(200), random.randrange(200))
             for _ in range(self.starting_cells)
         }
 
-    def calculate_neighboring_cells(self, cell: LivingCell):
+    def calculate_neighboring_cells(self, cell: tuple[int, int]):
         for dx, dy in [
             (-1, -1),
             (0, -1),
@@ -36,10 +36,11 @@ class GameManager:
             (0, 1),
             (1, 1),
         ]:
-            yield cell.position[0] + dx, cell.position[1] + dy
+            yield cell[0] + dx, cell[1] + dy
 
-    def generate_next_generation(self, cells: set[LivingCell]) -> set[LivingCell]:
-        all_positions = {cell.position for cell in cells}
+    def generate_next_generation(
+        self, cells: set[tuple[int, int]]
+    ) -> set[tuple[int, int]]:
         new_generation = Counter(
             (
                 new_position
@@ -48,9 +49,9 @@ class GameManager:
             )
         )
         return {
-            LivingCell(cell_position)
+            tuple(cell_position)
             for cell_position, encounters in new_generation.items()
-            if encounters == 3 or (encounters == 2 and cell_position in all_positions)
+            if encounters == 3 or (encounters == 2 and cell_position in cells)
         }
 
     def run_game(self):
@@ -61,6 +62,7 @@ class GameManager:
         cycle = 0
         font = pygame.font.SysFont("Garamond", 30)
         while is_playing:
+            start = time.time()
             self.living_cells = self.generate_next_generation(self.living_cells)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -71,12 +73,12 @@ class GameManager:
             for cell in self.living_cells:
                 pygame.draw.rect(
                     game_screen,
-                    cell.color,
+                    (255, 0, 0),
                     (
-                        (cell.position[0] * 5),
-                        (cell.position[1] * 5),
-                        cell.size,
-                        cell.size,
+                        (cell[0] * 5),
+                        (cell[1] * 5),
+                        5,
+                        5,
                     ),
                 )
 
@@ -93,5 +95,7 @@ class GameManager:
             game_screen.blit(second_text, second_textRect)
             clock.tick(self.fps)
             pygame.display.flip()
+            stop = time.time()
+            print(f"Generation: {cycle} - {stop - start} seconds")
 
         pygame.quit()
