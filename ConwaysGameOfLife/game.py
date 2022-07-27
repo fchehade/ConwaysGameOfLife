@@ -1,7 +1,6 @@
-from base64 import encode
 import random
-import pygame
 from collections import Counter
+import pygame
 from .cell import LivingCell
 
 
@@ -9,11 +8,13 @@ class GameManager:
     def __init__(
         self,
         starting_cells: int = 500,
+        fps: int = 30,
         screen_width: int = 1000,
         screen_height: int = 1000,
     ) -> None:
 
         self.starting_cells = starting_cells
+        self.fps = fps
         self.screen_width = screen_width
         self.screen_height = screen_height
         self.living_cells = self.generate_first_generation()
@@ -38,13 +39,13 @@ class GameManager:
             yield cell.position[0] + dx, cell.position[1] + dy
 
     def generate_next_generation(self, cells: set[LivingCell]) -> set[LivingCell]:
-        all_positions = [cell.position for cell in cells]
+        all_positions = {cell.position for cell in cells}
         new_generation = Counter(
-            [
+            (
                 new_position
                 for cell in cells
                 for new_position in self.calculate_neighboring_cells(cell)
-            ]
+            )
         )
         return {
             LivingCell(cell_position)
@@ -57,18 +58,20 @@ class GameManager:
         clock = pygame.time.Clock()
         game_screen = pygame.display.set_mode((self.screen_width, self.screen_height))
         is_playing = True
+        cycle = 0
+        font = pygame.font.SysFont("Garamond", 30)
         while is_playing:
             self.living_cells = self.generate_next_generation(self.living_cells)
-            clock.tick(144)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     is_playing = not is_playing
 
             game_screen.fill((0, 0, 0))
+
             for cell in self.living_cells:
                 pygame.draw.rect(
                     game_screen,
-                    (255, 0, 0),
+                    cell.color,
                     (
                         (cell.position[0] * 5),
                         (cell.position[1] * 5),
@@ -76,7 +79,19 @@ class GameManager:
                         cell.size,
                     ),
                 )
-            print(len(self.living_cells))
+
+            cycle += 1
+            text = font.render(
+                f"{len(self.living_cells)} living cells", True, (255, 255, 255)
+            )
+            textRect = text.get_rect()
+            textRect.center = (self.screen_width / 2, 25)
+            second_text = font.render(f"Generation: {cycle}", True, (255, 255, 255))
+            second_textRect = text.get_rect()
+            second_textRect.center = (self.screen_width / 5, 25)
+            game_screen.blit(text, textRect)
+            game_screen.blit(second_text, second_textRect)
+            clock.tick(self.fps)
             pygame.display.flip()
 
         pygame.quit()
